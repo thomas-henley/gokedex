@@ -10,10 +10,16 @@ import (
 type cliCommand struct {
 	name        string
 	description string
-	callback    func() error
+	callback    func(*Config) error
+}
+
+type Config struct {
+	next   string
+	prev   string
 }
 
 func startRepl() {
+	config := Config{"https://pokeapi.co/api/v2/location-area", ""}
 
 	commands := map[string]cliCommand{
 		"exit": {
@@ -25,6 +31,16 @@ func startRepl() {
 			name:        "help",
 			description: "Print usage information",
 			callback:    commandHelp,
+		},
+		"map": {
+			name:				 "map",
+			description: "Get a list of 20 locations from the API",
+			callback:		 commandMap,
+		},
+		"mapb": {
+			name:        "mapb",
+			description: "Get previous list of 20 locations",
+			callback:    commandMapb,
 		},
 	}
 
@@ -39,7 +55,7 @@ func startRepl() {
 			fmt.Println("Unknown command.")
 			continue
 		}
-		command.callback()
+		command.callback(&config)
 	}
 }
 
