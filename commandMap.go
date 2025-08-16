@@ -53,18 +53,28 @@ func getPrevLocations(config *Config) ([]string, error) {
 }
 
 func getLocations(config *Config, url string) ([]string, error) {
-	res, err := http.Get(url)
-	if err != nil {
-		return nil, fmt.Errorf("error making request: %w", err)
-	}
-	defer res.Body.Close()
-	fmt.Println("check this")
-	fmt.Println(res)
 
-	data, err := io.ReadAll(res.Body)
+	data, ok := cache.Get(url)
+	if !ok {
+		res, err := http.Get(url)
+		if err != nil {
+			return nil, fmt.Errorf("error making request: %w", err)
+		}
+		defer res.Body.Close()
+		// fmt.Println("check this")
+		// fmt.Println(res)
+
+		data, err = io.ReadAll(res.Body)
+		if err != nil {
+			return nil, fmt.Errorf("error reading bytes: %w", err)
+		}
+		cache.Add(url, data)
+	} else {
+		fmt.Println("Retrieving from cache...")
+	}
 
 	var response LocationResp
-	err = json.Unmarshal(data, &response)
+	err := json.Unmarshal(data, &response)
 	if err != nil {
 		return nil, fmt.Errorf("error unmarshaling json")
 	}

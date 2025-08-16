@@ -1,6 +1,11 @@
 package main
 
-import "testing"
+import (
+	"testing"
+	"time"
+
+	"github.com/thomas-henley/gokedex/internal/pokecache"
+)
 
 func TestCleanInput(t *testing.T) {
 	cases := []struct {
@@ -41,6 +46,7 @@ func TestCleanInput(t *testing.T) {
 }
 
 func TestCommandMap(t *testing.T) {
+	cache = pokecache.NewCache(5 * time.Second)
 	t.Run("get first page of locations", func(t *testing.T) {
 		config := Config{}
 		expectedLen := 20

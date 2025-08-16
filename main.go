@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
+
+	"github.com/thomas-henley/gokedex/internal/pokecache"
 )
 
 type cliCommand struct {
@@ -17,6 +20,8 @@ type Config struct {
 	Next     string
 	Previous string
 }
+
+var cache pokecache.Cache
 
 func getCommands() map[string]cliCommand {
 	commands := map[string]cliCommand{
@@ -97,5 +102,6 @@ func startRepl() {
 }
 
 func main() {
+	cache = pokecache.NewCache(5 * time.Second)
 	startRepl()
 }
