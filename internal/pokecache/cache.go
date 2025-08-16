@@ -1,7 +1,6 @@
 package pokecache
 
 import (
-	"fmt"
 	"sync"
 	"time"
 )
@@ -12,51 +11,52 @@ type cacheEntry struct {
 }
 
 type Cache struct {
-	entries  map[string]cacheEntry
-	interval time.Duration
-	mtx      *sync.Mutex
+	entries map[string]cacheEntry
+	mtx     *sync.Mutex
 }
 
 func NewCache(interval time.Duration) Cache {
 	cache := Cache{
-		entries:  map[string]cacheEntry{},
-		interval: interval,
-		mtx:      &sync.Mutex{},
+		entries: map[string]cacheEntry{},
+		mtx:     &sync.Mutex{},
 	}
-	cache.reapLoop()
+	go cache.reapLoop(interval)
 	return cache
 }
 
 func (c Cache) Add(key string, val []byte) {
 	c.mtx.Lock()
-	c.entries[key] = cacheEntry{createdAt: time.Now(), val: val}
-	c.mtx.Unlock()
+	defer c.mtx.Unlock()
+
+	c.entries[key] = cacheEntry{
+		createdAt: time.Now(),
+		val:       val,
+	}
 }
 
 func (c Cache) Get(key string) ([]byte, bool) {
 	c.mtx.Lock()
-	entry, found := c.entries[key]
-	c.mtx.Unlock()
-	if found {
-		return entry.val, true
-	}
-	return nil, false
+	defer c.mtx.Unlock()
+
+	entry, ok := c.entries[key]
+	return entry.val, ok
 }
 
-func (c Cache) reapLoop() {
-	reaper := time.NewTicker(c.interval)
+func (c Cache) reapLoop(interval time.Duration) {
+	reaper := time.NewTicker(interval)
 
-	go func() {
-		for {
-			<-reaper.C
-			c.mtx.Lock()
-			fmt.Println("Reaping cache entries...")
-			for k, v := range c.entries {
-				if time.Since(v.createdAt) > c.interval {
-					delete(c.entries, k)
-				}
-			}
-			c.mtx.Unlock()
+	for range reaper.C {
+		c.reap(interval)
+
+	}
+}
+
+func (c Cache) reap(interval time.Duration) {
+	c.mtx.Lock()
+	defer c.mtx.Unlock()
+	for k, v := range c.entries {
+		if time.Since(v.createdAt) > interval {
+			delete(c.entries, k)
 		}
-	}()
+	}
 }
