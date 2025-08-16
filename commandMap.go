@@ -1,96 +1,40 @@
 package main
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
-	"net/http"
 )
 
-const pokeurl = "https://pokeapi.co/api/v2/"
-
-type LocationResp struct {
-	Count    int     `json:"count"`
-	Next     *string `json:"next"`
-	Previous *string `json:"previous"`
-	Results  []struct {
-		Name string `json:"name"`
-	} `json:"results"`
-}
-
-func commandMap(config *Config) error {
-	locations, _ := getNextLocations(config)
-	for _, location := range locations {
-		fmt.Printf("%s\n", location)
-	}
-	return nil
-}
-
-func commandMapb(config *Config) error {
-	locations, _ := getPrevLocations(config)
-	for _, location := range locations {
-		fmt.Printf("%s\n", location)
-	}
-	return nil
-}
-
-func getNextLocations(config *Config) ([]string, error) {
-	if config.Next == "" {
-		config.Next = pokeurl + "location-area/"
-	}
-	fmt.Println(config.Next)
-
-	return getLocations(config, config.Next)
-}
-
-func getPrevLocations(config *Config) ([]string, error) {
-    if config.Previous == "" {
-		fmt.Println("you're on the first page")
-		return nil, fmt.Errorf("you're on the first page")
-	}
-
-	return getLocations(config, config.Previous)
-}
-
-func getLocations(config *Config, url string) ([]string, error) {
-
-	data, ok := cache.Get(url)
-	if !ok {
-		res, err := http.Get(url)
-		if err != nil {
-			return nil, fmt.Errorf("error making request: %w", err)
-		}
-		defer res.Body.Close()
-		// fmt.Println("check this")
-		// fmt.Println(res)
-
-		data, err = io.ReadAll(res.Body)
-		if err != nil {
-			return nil, fmt.Errorf("error reading bytes: %w", err)
-		}
-		cache.Add(url, data)
-	} else {
-		fmt.Println("Retrieving from cache...")
-	}
-
-	var response LocationResp
-	err := json.Unmarshal(data, &response)
+func commandMap(cfg *config) error {
+	locationsResp, err := cfg.pokeapiClient.ListLocations(cfg.nextLocationURL)
 	if err != nil {
-		return nil, fmt.Errorf("error unmarshaling json")
+		return err
 	}
 
-	locations := []string{}
-	for _, item := range response.Results {
-		locations = append(locations, item.Name)
-	}
+	cfg.nextLocationURL = locationsResp.Next
+	cfg.prevLocationURL = locationsResp.Previous
 
-	if response.Next != nil {
-		config.Next = *response.Next
+	for _, loc := range locationsResp.Results {
+		fmt.Println(loc.Name)
 	}
-	if response.Previous != nil {
-		config.Previous = *response.Previous
-	}
-
-	return locations, nil
+	return nil
 }
 
+func commandMapb(cfg *config) error {
+	if cfg.prevLocationURL == nil {
+		return errors.New("you're on the first page")
+	}
+
+	locationResp, err := cfg.pokeapiClient.ListLocations(cfg.prevLocationURL)
+	if err != nil {
+		return err
+	}
+
+	cfg.nextLocationURL = locationResp.Next
+	cfg.prevLocationURL = locationResp.Previous
+
+	for _, loc := range locationResp.Results {
+		fmt.Println(loc.Name)
+	}
+	return nil
+}

@@ -1,63 +1,13 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"os"
-	"strings"
 	"time"
 
-	"github.com/thomas-henley/gokedex/internal/pokecache"
+	"github.com/thomas-henley/gokedex/internal/pokeapi"
 )
 
-type cliCommand struct {
-	name        string
-	description string
-	callback    func(*Config) error
-}
-
-type Config struct {
-	Next     string
-	Previous string
-}
-
-var cache pokecache.Cache
-
-func getCommands() map[string]cliCommand {
-	commands := map[string]cliCommand{
-		"exit": {
-			name:        "exit",
-			description: "Exit the Pokedex",
-			callback:    commandExit,
-		},
-		"help": {
-			name:        "help",
-			description: "Displays a help message",
-			callback:    commandHelp,
-		},
-		"map": {
-			name:        "map",
-			description: "displays a list of locations",
-			callback:    commandMap,
-		},
-		"mapb": {
-			name:        "mapb",
-			description: "displays the previous list of locations",
-			callback:    commandMapb,
-		},
-	}
-	return commands
-}
-
-func cleanInput(text string) []string {
-	words := strings.Fields(text)
-	for i, word := range words {
-		words[i] = strings.ToLower(word)
-	}
-	return words
-}
-
-func handleCommand(input string, config *Config) {
+func handleCommand(input string, config *config) {
 	words := cleanInput(input)
 	commands := getCommands()
 	switch words[0] {
@@ -90,18 +40,11 @@ func handleCommand(input string, config *Config) {
 	}
 }
 
-func startRepl() {
-	scanner := bufio.NewScanner(os.Stdin)
-	config := Config{}
-	for {
-		fmt.Print("Pokedex > ")
-		scanner.Scan()
-		input := scanner.Text()
-		handleCommand(input, &config)
-	}
-}
-
 func main() {
-	cache = pokecache.NewCache(5 * time.Second)
-	startRepl()
+	pokeClient := pokeapi.NewClient(5 * time.Second, 5 * time.Minute)
+	cfg := &config{
+		pokeapiClient: pokeClient,
+	}
+
+	startRepl(cfg)
 }
